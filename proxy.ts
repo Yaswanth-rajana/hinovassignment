@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export default async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -15,7 +15,7 @@ export default async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -27,17 +27,16 @@ export default async function middleware(request: NextRequest) {
     }
   )
 
-  // Do not run logic for static assets
-  if (request.nextUrl.pathname.startsWith('/_next')) {
+  // Don't run logic for static assets
+  const path = request.nextUrl.pathname
+  if (path.startsWith('/_next') || path.startsWith('/api')) {
     return supabaseResponse
   }
 
+  // Get user
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protected routes logic
-  const path = request.nextUrl.pathname
-  
-  // Check if user is admin (only if user exists)
+  // Check admin status
   let isAdmin = false
   if (user) {
     try {
@@ -48,17 +47,15 @@ export default async function middleware(request: NextRequest) {
         .single()
       isAdmin = userData?.role === 'admin'
     } catch (e) {
-      // User exists in auth but not in users table yet
-      console.log('User not found in users table')
+      // User not in users table yet
     }
   }
 
-  // Admin routes protection
+  // Protect routes
   if (path.startsWith('/admin') && !isAdmin) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Author routes protection
   if ((path.startsWith('/dashboard') || path.startsWith('/posts/create')) && !user) {
     return NextResponse.redirect(new URL('/auth/signin', request.url))
   }
