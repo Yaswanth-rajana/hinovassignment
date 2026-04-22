@@ -1,21 +1,16 @@
-import { createClient } from './client'
+import { supabase } from './client'
 
 export async function signUp(email: string, password: string, name: string) {
-  const supabase = createClient()
-  
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        name: name,
-      },
+      data: { name },
     },
   })
 
   if (error) throw error
 
-  // After sign up, create user in our users table
   if (data.user) {
     const { error: insertError } = await supabase
       .from('users')
@@ -23,7 +18,7 @@ export async function signUp(email: string, password: string, name: string) {
         id: data.user.id,
         name: name,
         email: email,
-        role: 'viewer', // Default role
+        role: 'viewer',
       })
 
     if (insertError) throw insertError
@@ -33,8 +28,6 @@ export async function signUp(email: string, password: string, name: string) {
 }
 
 export async function signIn(email: string, password: string) {
-  const supabase = createClient()
-  
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -45,20 +38,15 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signOut() {
-  const supabase = createClient()
-  
   const { error } = await supabase.auth.signOut()
   if (error) throw error
 }
 
 export async function getCurrentUser() {
-  const supabase = createClient()
-  
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) return null
 
-  // Get user role from users table
   const { data: userData } = await supabase
     .from('users')
     .select('*')
@@ -70,9 +58,4 @@ export async function getCurrentUser() {
     role: userData?.role || 'viewer',
     name: userData?.name || user.email,
   }
-}
-
-export async function getUserRole() {
-  const user = await getCurrentUser()
-  return user?.role || null
 }

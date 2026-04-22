@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'react-hot-toast';
 import { UserProvider } from '@/contexts/UserContext';
 import Navbar from '@/components/layout/Navbar';
 
-const inter = Inter({
-  variable: "--font-inter",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
@@ -28,22 +28,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} ${geistMono.variable} font-sans antialiased text-gray-900`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <UserProvider>
           <Navbar />
-          <main className="min-h-screen bg-gray-50/50">
+          <main className="min-h-screen bg-gray-50">
             {children}
           </main>
-          <Toaster 
-            position="bottom-right" 
-            toastOptions={{
-              className: '!bg-white !text-gray-900 !rounded-xl !shadow-xl border border-gray-100',
-              success: {
-                iconTheme: { primary: '#4f46e5', secondary: '#fff' },
-              },
-            }}
-          />
+          <Toaster position="bottom-right" />
         </UserProvider>
       </body>
     </html>

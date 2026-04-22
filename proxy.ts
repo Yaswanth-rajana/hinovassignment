@@ -1,44 +1,14 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { supabase } from '@/lib/supabase/client'
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => {
-            if (value) request.cookies.set(name, value)
-          })
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  // Don't run logic for static assets
   const path = request.nextUrl.pathname
-  if (path.startsWith('/_next') || path.startsWith('/api')) {
-    return supabaseResponse
-  }
-
-  // Get user
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // Check admin status
+  
+  // Get session from cookie manually
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
+  
+  // Get user role
   let isAdmin = false
   if (user) {
     try {
@@ -49,7 +19,7 @@ export async function proxy(request: NextRequest) {
         .single()
       isAdmin = userData?.role === 'admin'
     } catch (e) {
-      // User not in users table yet
+      // User not found
     }
   }
 
@@ -62,7 +32,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/signin', request.url))
   }
 
-  return supabaseResponse
+  return NextResponse.next()
 }
 
 export const config = {
