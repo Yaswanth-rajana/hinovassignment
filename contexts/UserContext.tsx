@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { getCurrentUser } from '@/lib/supabase/auth'
+import { supabase } from '@/lib/supabase/client'
 
 type User = {
   id: string
@@ -29,8 +29,25 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = async () => {
     setLoading(true)
     try {
-      const currentUser = await getCurrentUser()
-      setUser(currentUser as User)
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      
+      if (!authUser) {
+        setUser(null)
+        return
+      }
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single()
+
+      setUser({
+        id: authUser.id,
+        email: authUser.email!,
+        name: userData?.name || authUser.email!,
+        role: userData?.role || 'viewer',
+      })
     } catch (error) {
       console.error('Error fetching user:', error)
       setUser(null)
@@ -41,6 +58,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshUser()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      refreshUser()
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   return (

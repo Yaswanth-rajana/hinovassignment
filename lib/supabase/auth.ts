@@ -59,3 +59,8 @@ export async function getCurrentUser() {
     name: userData?.name || user.email,
   }
 }
+
+export async function getUserRole() {
+  const user = await getCurrentUser()
+  return user?.role || null
+}
